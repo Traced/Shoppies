@@ -82,7 +82,7 @@ func CutFileAtNonEmptyLines(filename string, n int64) (lines []string, err error
 		return
 	}
 	// 将剩余的行写回文件
-	WriteFile(filename, []byte(strings.Join(lines[n:], "\n")), os.O_TRUNC)
+	WriteFile(filename, []byte(strings.Join(lines[n:], "\n")+"\n"), os.O_TRUNC)
 	return
 }
 

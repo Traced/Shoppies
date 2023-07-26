@@ -43,7 +43,20 @@ func main() {
 	}
 
 	// 运行任务
-	RunTasks()
+	//RunTasks()
+	Test()
+}
+
+func Test() {
+	var wg sync.WaitGroup
+	wg.Add(30)
+	for i := 0; 30 > i; i++ {
+		go func() {
+			defer wg.Done()
+			accounts.PopupAccount()
+		}()
+	}
+	wg.Wait()
 }
 
 func RunTasks() {

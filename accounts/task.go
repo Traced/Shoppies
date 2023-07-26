@@ -57,10 +57,10 @@ var (
 func PopupAccount() (username, password string) {
 	// 多线程读取加锁
 	popupAccountLock.Lock()
-	defer popupAccountLock.Unlock()
-
 	// 读取文件非空行
 	line, err := utils.CutFileAtNonEmptyLine(accountFilepath)
+	popupAccountLock.Unlock()
+
 	if err != nil {
 		log.Println("[读取账号库] 失败：", err)
 		return
