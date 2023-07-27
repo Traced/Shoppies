@@ -44,7 +44,8 @@ func main() {
 
 	// 运行任务
 	//RunTasks()
-	Test()
+	//Test()
+	CheckAccountAlive()
 }
 
 func Test() {
@@ -185,7 +186,7 @@ func BatchCheckAlive(accountList []string) {
 			defer wg.Done()
 			// 账号密码用空格分开
 			info := strings.Split(strings.TrimSpace(acc), configFileSeparate)
-			a := accounts.NewAccount(info[0], info[1], "")
+			a := accounts.NewAccount(info[0], info[1], "socks5://xp112233_area-JP:xiaopao0o0@43.128.63.227:7710")
 			var status string
 			if a.CheckAlive() == nil {
 				status = "良好"
