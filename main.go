@@ -1,8 +1,8 @@
 package main
 
 import (
+	"Shoppies/tools"
 	jsoniter "github.com/json-iterator/go"
-	"io"
 	"log"
 	"os"
 	"strconv"
@@ -34,18 +34,20 @@ type (
 	}
 )
 
-func main() {
+func init() {
 	log.SetFlags(log.Lshortfile | log.Ldate | log.Ltime | log.Lmicroseconds)
-	utils.MkdirAll("log/aa")
-	// 设置同时写日志到控制台和文件
-	if f, err := os.OpenFile("log/run.txt", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666); err == nil {
-		log.SetOutput(io.MultiWriter(os.Stdout, f))
-	}
 
+	// 设置同时写日志到控制台和文件
+	//utils.SetLogOutputFile("log/run.txt")
+}
+
+func main() {
+
+	tools.Start()
 	// 运行任务
 	//RunTasks()
 	//Test()
-	CheckAccountAlive()
+	//CheckAccountAlive()
 }
 
 func Test() {
