@@ -1,7 +1,6 @@
 package main
 
 import (
-	"Shoppies/tools"
 	jsoniter "github.com/json-iterator/go"
 	"log"
 	"os"
@@ -42,12 +41,23 @@ func init() {
 }
 
 func main() {
-
-	tools.Start()
 	// 运行任务
-	//RunTasks()
+	RunTasks()
+
+	//tools.Start()
 	//Test()
 	//CheckAccountAlive()
+	//CheckChangeAccount()
+}
+
+// CheckChangeAccount 测试验证账号流程
+func CheckChangeAccount() {
+	a := accounts.NewTask(
+		0, 2, 3,
+		47, 0, 2, 2,
+		"account.txt", accounts.TaskRange{0, 3},
+		"ttheqyhrzyrra@outlook.com", "z123456")
+	_ = a.CheckAliveAndSupplement()
 }
 
 func Test() {

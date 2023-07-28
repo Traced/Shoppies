@@ -534,7 +534,7 @@ func (a *Account) LogFailedReason(err error) {
 	writeBadLock.Lock()
 	defer writeBadLock.Unlock()
 	// 一行一个：用户名 密码 错误信息
-	line := []byte(a.Username + " " + a.Password + "" + err.Error() + "\n")
+	line := []byte("\n" + a.Username + " " + a.Password + "" + err.Error() + "\n")
 	utils.WriteFile(badReasonFilepath, line, os.O_APPEND)
 }
 
@@ -559,9 +559,9 @@ func (a *Account) CheckAlive() (err error) {
 		log.Printf("[可用检测] 账号 %s 进行登录\n", a.Username)
 		// 登录失败
 		if err = a.Login(); errors.Is(err, AccountError) {
-			a.LogFailedReason(errors.New("登录发生错误"))
+			a.LogFailedReason(errors.New("登录异常"))
 			log.Printf("[可用检测] 账号 %s 不可用: %s", a.Username, err)
-			return err
+			return AccountError
 		}
 	}
 
@@ -597,7 +597,6 @@ func (a *Account) CheckAlive() (err error) {
 	checkBadPageURL := fmt.Sprintf("%s/index_pc.php?jb=member-order&id=%s", siteURL, itemID)
 	log.Printf("[可用检测] 账号 %s 访问订单页面：%s\n", a.Username, checkBadPageURL)
 	resp, err = a.Http.Get(nil, checkBadPageURL)
-
 	if err != nil {
 		log.Printf("[可用检测] 账号 %s 检测失败，不作判断。或可能存在网络错误：%s\n", a.Username, err)
 		return
@@ -613,9 +612,10 @@ func (a *Account) CheckAlive() (err error) {
 	// 除了警告提示 其他都不影响
 	errTips := resp.Html().Find(".cborder_pink")
 	if errTips != nil && strings.Contains(errTips.Text(), "警告中") {
+		a.LogFailedReason(errors.New("购买页面中出现警告"))
 		log.Printf("[可用检测] 账号 %s 不可用：购买页面中出现警告", a.Username)
 		return AccountError
 	}
-
+	log.Printf("[可用检测] 账号 %s 可用！", a.Username)
 	return
 }
