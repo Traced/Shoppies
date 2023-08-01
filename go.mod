@@ -3,7 +3,7 @@ module Shoppies
 go 1.20
 
 require (
-	gitee.com/baixudong/gospider v0.0.0-20230719145728-4c7323552909
+	gitee.com/baixudong/gospider v0.0.0-20230729093335-b7b9497294da
 	github.com/json-iterator/go v1.1.12
 )
 
@@ -27,6 +27,7 @@ require (
 	golang.org/x/exp v0.0.0-20230713183714-613f0c0eb8a1 // indirect
 	golang.org/x/image v0.9.0 // indirect
 	golang.org/x/net v0.12.0 // indirect
+	golang.org/x/sync v0.3.0 // indirect
 	golang.org/x/sys v0.10.0 // indirect
 	golang.org/x/text v0.11.0 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
