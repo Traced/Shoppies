@@ -17,7 +17,7 @@ var (
 	yesCaptchaApiURL, _ = url.Parse("https://api.yescaptcha.com")
 	http, _             = requests.NewClient(nil, requests.ClientOption{
 		TryNum: 3,
-		OptionCallBack: func(_ context.Context, client *requests.Client, option *requests.RequestOption) error {
+		OptionCallBack: func(_ context.Context, option *requests.RequestOption) error {
 			// 相对路径加上 url
 			if !option.Url.IsAbs() {
 				option.Url = yesCaptchaApiURL.ResolveReference(option.Url)

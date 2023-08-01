@@ -14,7 +14,8 @@ import (
 )
 
 var (
-	proxyAddr     = "socks5://xp112233_area-JP:xiaopao0o0@43.128.63.227:7710"
+	//proxyAddr     = "socks5://127.0.0.1:1080"
+	proxyAddr     = ""
 	httpClient, _ = requests.NewClient(nil, requests.ClientOption{
 		Headers: map[string]string{
 			"Accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",

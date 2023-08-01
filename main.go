@@ -1,7 +1,10 @@
 package main
 
 import (
+	"fmt"
 	jsoniter "github.com/json-iterator/go"
+	"golang.org/x/net/context"
+	"golang.org/x/sync/semaphore"
 	"log"
 	"os"
 	"strconv"
@@ -58,18 +61,6 @@ func CheckChangeAccount() {
 		"account.txt", accounts.TaskRange{0, 3},
 		"ttheqyhrzyrra@outlook.com", "z123456")
 	_ = a.CheckAliveAndSupplement()
-}
-
-func Test() {
-	var wg sync.WaitGroup
-	wg.Add(30)
-	for i := 0; 30 > i; i++ {
-		go func() {
-			defer wg.Done()
-			accounts.PopupAccount()
-		}()
-	}
-	wg.Wait()
 }
 
 func RunTasks() {
@@ -193,12 +184,23 @@ func CheckAccountAlive() {
 func BatchCheckAlive(accountList []string) {
 	var wg sync.WaitGroup
 	wg.Add(len(accountList))
+	// 最大并发：50
+	sem := semaphore.NewWeighted(int64(50))
+
 	for _, account := range accountList {
 		go func(acc string) {
 			defer wg.Done()
+			// 尝试获取一个信号量，如果已满，会阻塞
+			if err := sem.Acquire(context.Background(), 1); err != nil {
+				fmt.Printf("Failed to acquire semaphore: %v\n", err)
+				return
+			}
+			defer sem.Release(1)
+
 			// 账号密码用空格分开
 			info := strings.Split(strings.TrimSpace(acc), configFileSeparate)
-			a := accounts.NewAccount(info[0], info[1], "socks5://xp112233_area-JP:xiaopao0o0@43.128.63.227:7710")
+			a := accounts.NewAccount(info[0], info[1], "")
+			//a := accounts.NewAccount(info[0], info[1], "socks5://127.0.0.1:10808")
 			var status string
 			if a.CheckAlive() == nil {
 				status = "良好"

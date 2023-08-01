@@ -411,7 +411,7 @@ func (a *Account) ReadProductConfig(i string) (pc ProductConfig) {
 // PublishProduct 发布商品
 //
 // 使用指定商品数据进行填充并发布
-func (a *Account) PublishProduct(product ProductConfig) bool {
+func (a *Account) PublishProduct(product *ProductConfig) bool {
 	// YesCaptcha.PageAction = "write/item"
 	if !a.IsLogin {
 		log.Printf("[发布商品] 账号 %s 发布失败，请先登录！\n", a.Username)
@@ -505,6 +505,7 @@ func (a *Account) PublishProduct(product ProductConfig) bool {
 		}
 		// 警告内容
 		warningText := strings.TrimSpace(warning.Text())
+		product.Error = errors.New(warningText)
 		log.Printf("[发布商品] 账号 %s 确认出品编号 %s 失败，警告内容: %s\n", a.Username, product.ID, warningText)
 		return false
 	}
@@ -579,7 +580,7 @@ func (a *Account) CheckAlive() (err error) {
 
 	itemID := "000"
 	// 去分类随便获取一个商品id，用于检测没有认证的情况
-	resp, err = a.Http.Get(nil, siteURL)
+	resp, err = a.Http.Get(nil, siteURL+"/user-item_list/cid-0109/p/39")
 	if err != nil {
 		log.Printf("[可用检测] 账号 %s 访问主页获取商品ID失败，发生网络错误：%s\n", a.Username, err)
 	} else {

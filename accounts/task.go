@@ -161,8 +161,8 @@ func (t *Task) ReadTaskProxyIP() string {
 // Run 开始执行任务
 func (t *Task) Run() {
 	// 每小时几分开始执行任务
-	//minute, sec, hourAfter := t.StartMinute, t.StartSeconds, 1
-	minute, sec, hourAfter := time.Now().Minute(), time.Now().Second()+3, 0
+	minute, sec, hourAfter := t.StartMinute, t.StartSeconds, 1
+	//minute, sec, hourAfter := time.Now().Minute(), time.Now().Second()+3, 0
 	log.Println("[执行任务] 任务启动 -", t.ID, "-", t.Username,
 		"任务分段：", t.Ranges,
 		"使用代理：", t.ReadTaskProxyIP(),
@@ -318,7 +318,7 @@ func (t *Task) Execute() {
 	}
 	time.Sleep(time.Duration(t.PublishInterval) * time.Second)
 	// 商品信息发布成功
-	if t.PublishProduct(pc) {
+	if t.PublishProduct(&pc) {
 		// 成功发布商品，下一轮就传别的
 		t.ProgressIndex++
 		// 如果商品全部传完了，就切换到下一个号，继续执行任务
@@ -351,6 +351,11 @@ func (t *Task) Execute() {
 
 		// 继续下一个商品的发布
 		t.Execute()
+		return
+	}
+
+	// 时间，负载过重。不尝试了
+	if strings.Contains(pc.Error.Error(), "時間") {
 		return
 	}
 
