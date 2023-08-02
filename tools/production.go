@@ -1,7 +1,9 @@
 package tools
 
 import (
+	"Shoppies/accounts"
 	"Shoppies/utils"
+	"errors"
 	"fmt"
 	"gitee.com/baixudong/gospider/requests"
 	"log"
@@ -40,6 +42,41 @@ var (
 type (
 	TaskFunc func() (keep bool)
 )
+
+var (
+	configFileSeparate = "----"
+)
+
+func StartCheckLoginTask() {
+	utils.SetLogOutputFile("log/check-login.log.txt")
+	checkFile, proxyAddr := "account.txt", ""
+	if len(os.Args) > 1 {
+		checkFile = os.Args[1]
+	}
+	if len(os.Args) > 2 {
+		proxyAddr = os.Args[2]
+	}
+
+	lines, err := utils.ReadFileAtLines(checkFile)
+	log.Printf("读取到%d个账号等待检测", len(lines))
+	if err != nil {
+		log.Println("读取文件错误：", err)
+		return
+	}
+
+	for _, account := range lines {
+		// 账号密码用空格分开
+		info := strings.Split(strings.TrimSpace(account), configFileSeparate)
+		a := accounts.NewAccount(info[0], info[1], proxyAddr)
+		var status string
+		if err = a.Login(); errors.Is(err, accounts.AccountError) {
+			status = "不可用"
+		} else {
+			status = "良好"
+		}
+		log.Printf("账号 %s 可用状态为：%s\n", info[0], status)
+	}
+}
 
 // 统计指定链接列表商品数量
 func taskCountProductNum() (keep bool) {
@@ -95,7 +132,7 @@ func taskCountProductNum() (keep bool) {
 	return true
 }
 
-func Start() {
+func StartCountTask() {
 	m, s := 52, 30
 	if len(os.Args) > 1 {
 		m, _ = strconv.Atoi(os.Args[1])
