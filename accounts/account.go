@@ -500,6 +500,7 @@ func (a *Account) PublishProduct(product *ProductConfig) bool {
 		if warning == nil {
 			pageLogFile := "log/write-item_conf." + a.Username + "-" + product.ID + ".html"
 			utils.LogFile(pageLogFile, resp.Text())
+			product.Error = errors.New("没找到conf值")
 			log.Printf("[发布商品] 账号 %s 确认出品失败，没找到conf值，未知原因，已记录页面信息：%s！\n", a.Username, pageLogFile)
 			return false
 		}

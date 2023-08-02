@@ -97,6 +97,33 @@ func PopupProxyAddr() (proxyAddr string) {
 	return strings.TrimSpace(proxyAddr)
 }
 
+// PopupAccountFromFile 从指定账号库文件从取出账号，并且从账号库中删除已经取出来的账号
+func PopupAccountFromFile(accountFilepath string) (username, password string) {
+	// 读取文件非空行
+	line, err := utils.CutFileAtNonEmptyLine(accountFilepath)
+
+	if err != nil {
+		log.Printf("[读取账号库] %s 失败：%s", accountFilepath, err)
+		return
+	}
+
+	// 从总账号库读到 0 行
+	if line == "" {
+		log.Printf("[读取账号库] 失败：帐号库 %s 库存不足！", accountFilepath)
+		return
+	}
+
+	// 分割账号密码
+	account := strings.Split(strings.TrimSpace(line), configFileSeparate)
+	// 读取不到账号
+	if 2 > len(account) {
+		log.Printf("[读取账号库] 失败：帐号库 %s 读取到的账号格式有误：%s！", accountFilepath, line)
+		return
+	}
+
+	return account[0], account[1]
+}
+
 // Run 并发启动所有任务
 func (tl TaskList) Run() {
 	if 1 > len(tl) {
@@ -258,8 +285,11 @@ func (t *Task) AccountSupplement() error {
 	// 从总账号读取一个账号
 	username, password := PopupAccount()
 	if strings.TrimSpace(username) == "" {
-		log.Printf("[补充账号] 任务 %d %v 补充账号失败：总账号库异常！", t.ID, t.Ranges)
-		return EmptyAccountError
+		log.Printf("[补充账号] 任务 %d %v 从总账号库补充账号失败：总账号库异常，尝试从子账号库 %s 读取账号！", t.ID, t.Ranges, t.TaskAccountFilepath)
+		username, password = PopupAccountFromFile(t.TaskAccountFilepath)
+		if strings.TrimSpace(username) == "" {
+			return EmptyAccountError
+		}
 	}
 	// 追加到最后
 	utils.WriteFile(t.TaskAccountFilepath, []byte(username+configFileSeparate+password+"\n"), os.O_APPEND)
@@ -355,7 +385,7 @@ func (t *Task) Execute() {
 	}
 
 	// 时间，负载过重。不尝试了
-	if strings.Contains(pc.Error.Error(), "時間") {
+	if pc.Error != nil && strings.Contains(pc.Error.Error(), "時間") {
 		return
 	}
 
