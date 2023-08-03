@@ -188,8 +188,8 @@ func (t *Task) ReadTaskProxyIP() string {
 // Run 开始执行任务
 func (t *Task) Run() {
 	// 每小时几分开始执行任务
-	minute, sec, hourAfter := t.StartMinute, t.StartSeconds, 1
-	//minute, sec, hourAfter := time.Now().Minute(), time.Now().Second()+3, 0
+	//minute, sec, hourAfter := t.StartMinute, t.StartSeconds, 1
+	minute, sec, hourAfter := time.Now().Minute(), time.Now().Second()+3, 0
 	log.Println("[执行任务] 任务启动 -", t.ID, "-", t.Username,
 		"任务分段：", t.Ranges,
 		"使用代理：", t.ReadTaskProxyIP(),
@@ -211,7 +211,7 @@ func (t *Task) Run() {
 	t.ProgressIndex = t.Ranges[0]
 
 	// 第一次运行程序时登录并删除商品
-	_ = t.LoginAndDeleteProduct()
+	//_ = t.LoginAndDeleteProduct()
 
 	// 开始循环
 	for {
@@ -332,6 +332,7 @@ func (t *Task) Execute() {
 	log.Printf("[执行任务-上传图片] 任务线程 %d 将在 %d 秒后开始执行\n", t.ID, t.PublishInterval)
 	// 读取商品配置文件
 	pc := t.ReadProductConfig(strconv.Itoa(t.ProgressIndex))
+
 	// 读取配置文件失败，不执行
 	if pc.Error != nil {
 		return

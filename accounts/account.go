@@ -35,30 +35,42 @@ var (
 
 func getDefaultHeaders() map[string]string {
 	return map[string]string{
-		"Accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-		"Accept-Language":           "en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7",
-		"Cache-Control":             "no-cache",
-		"Connection":                "keep-alive",
-		"DNT":                       "1",
-		"Pragma":                    "no-cache",
-		"Sec-Fetch-Dest":            "document",
-		"Sec-Fetch-Mode":            "navigate",
-		"Sec-Fetch-Site":            "none",
-		"Sec-Fetch-User":            "?1",
-		"Upgrade-Insecure-Requests": "1",
-		"User-Agent":                "Mozilla/5.0 (Linux; Android 8.0.0; SM-G955U Build/R16NW) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Mobile Safari/537.36",
-		"sec-ch-ua":                 `Not.A/Brand";v="8", "Chromium";v="114", "Google Chrome";v="114"`,
-		"sec-ch-ua-mobile":          "?0",
-		"sec-ch-ua-platform":        "\"macOS\"",
+		"Accept":           "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+		"Accept-Language":  "en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7",
+		"Cache-Control":    "no-cache",
+		"Connection":       "keep-alive",
+		"X-Requested-With": "XMLHttpRequest",
 	}
 }
 
+// 手机端网页
+func getMobileHeaders(appending map[string]string) (headers map[string]string) {
+	headers = getDefaultHeaders()
+	headers["User-Agent"] = "Mozilla/5.0 (Linux; Android 8.0.0; SM-G955U Build/R16NW) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Mobile Safari/537.36"
+	for k, v := range appending {
+		headers[k] = v
+	}
+	return headers
+}
+
+// pc端网页
+func getPCHeaders(appending map[string]string) (headers map[string]string) {
+	headers = getDefaultHeaders()
+	headers["User-Agent"] = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+	for k, v := range appending {
+		headers[k] = v
+	}
+	return headers
+}
+
 func NewAccount(username, password, proxyAddr string) *Account {
+	//ja3String, _ := ja3.CreateSpecWithStr("772,4865-4866-4867-49195-49199-49196-49200-52393-52392-49171-49172-156-157-47-53,17513-27-43-35-13-0-11-23-5-51-10-45-16-65281-18,29-23-24,0")
 	c, _ := requests.NewClient(nil, requests.ClientOption{
-		Ja3:     true,
-		H2Ja3:   true,
+		//Ja3Spec: ja3String,
+		//Ja3:     true,
+		//H2Ja3:   true,
 		TryNum:  3,
-		Headers: getDefaultHeaders(),
+		Headers: getPCHeaders(nil),
 	})
 
 	if proxyAddr != "" {
@@ -97,16 +109,21 @@ func (a *Account) GetProxyIP() string {
 
 // Login 对账号进行登录操作
 //
-// 这里有坑，手机端页面跟电脑端获取的数据不一样！,这里做手机端登录
+// 这里有坑，手机端页面跟电脑端获取的数据不一样！
 func (a *Account) Login() error {
 	a.IsLogin = false
 	loginPageURL := fmt.Sprintf("%s/user-login_test/", siteURL)
-	resp, err := a.Http.Get(nil, loginPageURL)
+	pcHeaders := requests.RequestOption{
+		Headers: getPCHeaders(nil),
+	}
+	resp, err := a.Http.Get(nil, loginPageURL, pcHeaders)
 	if err != nil {
 		log.Printf("[登录] 账号 %s 登录失败，访问登录页获取值失败：%s\n", a.Username, err)
 		return loginNetworkError
 	}
-	form := resp.Html().Find("[action*=\"ses_id\"]")
+	form := resp.Html().Find("form")
+	// 手机端
+	//form := resp.Html().Find("[action*=\"ses_id\"]")
 	// 获取表单
 	if form == nil {
 		logFile := "log/" + a.Username + ".login.html"
@@ -115,31 +132,32 @@ func (a *Account) Login() error {
 		return errors.New("[登录] 登录失败，解析登录表单失败！")
 	}
 	// 重新提交数据到登录网站，以post的方式,ses_id 从表单获取
-	payload := map[string]string{
-		"loginforid": "1",
-		"loginid":    a.Username,
-		"password":   a.Password,
-		"loginbtn":   "ログイン",
+	payload := make(map[string]string, 10)
+	// 提取表单所有值
+	for _, input := range form.Finds(`input`) {
+		payload[input.Get("name")] = input.Get("value")
 	}
-	// 这个 id 时有时无的，有的话就一起提交
-	sessID := form.Find("[name=\"ses_id\"]")
-	if sessID != nil {
-		payload["ses_id"] = sessID.Get("value")
-	}
-	resp, err = a.Http.Post(nil, fmt.Sprintf("%s%s", siteURL, form.Get("action")),
-		requests.RequestOption{
-			Data: payload,
-		})
+	payload["loginid"] = a.Username
+	payload["password"] = a.Password
+	// 手机端
+	//postPayloadURL:=fmt.Sprintf("%s%s", siteURL, form.Get("action"))
+	postPayloadURL := form.Get("action")
+
+	pcHeaders.Data = payload
+	resp, err = a.Http.Post(nil, postPayloadURL, pcHeaders)
 	if err != nil {
 		log.Printf("[登录] 账号 %s 登录失败, 可能存在网络问题：", err)
 		return loginNetworkError
 	}
+
 	if resp.Html().Find("[name=\"auto_login_flag\"]") != nil {
 		log.Printf("[登录] 账号 %s 登录失败, 可能是密码错误或者账号已经不存在了。\n", a.Username)
 		return AccountError
 	}
 	log.Printf("[登录] 账号 %s 登录成功。\n", a.Username)
 	a.IsLogin = true
+	cc, _ := a.Http.Get(nil, siteURL+"/get_notice.php")
+	log.Println(cc.Text())
 	return nil
 }
 
@@ -151,7 +169,7 @@ func (a *Account) GetProductNumAndTotalPage() (num, totalPage int) {
 	}
 	resp, err := a.Http.Get(nil, fmt.Sprintf("%s/index.php?jb=member-item_user_list", siteURL),
 		requests.RequestOption{
-			Headers: getDefaultHeaders(),
+			Headers: getMobileHeaders(nil),
 		})
 	if err != nil {
 		log.Printf("[获取商品总数] 账号 %s 获取失败，可能是网络问题？：%s\n", a.Username, err)
@@ -183,7 +201,10 @@ func (a *Account) GetAllProductIDs() (ids []string) {
 		return
 	}
 	var (
-		wg sync.WaitGroup
+		wg        sync.WaitGroup
+		mbHeaders = requests.RequestOption{
+			Headers: getMobileHeaders(nil),
+		}
 	)
 	wg.Add(totalPage)
 	log.Printf("[获取商品ID] 账号 %s，商品总数：%d，总分页数：%d", a.Username, num, totalPage)
@@ -193,7 +214,7 @@ func (a *Account) GetAllProductIDs() (ids []string) {
 			defer wg.Done()
 			// https://shoppies.jp/index.php?jb=member-item_user_list&page=
 			pageURL := fmt.Sprintf("%s/index.php?jb=member-item_user_list&page=%d", siteURL, i)
-			resp, err := a.Http.Get(nil, pageURL)
+			resp, err := a.Http.Get(nil, pageURL, mbHeaders)
 			if err != nil {
 				log.Printf("[获取商品ID] 账号 %s 获取所有商品ID，线程 %d 出现网络错误：%s\n", a.Username, i, err)
 				return
@@ -232,6 +253,7 @@ func (a *Account) DeleteAllProduct() int {
 	log.Printf("[清空所有商品] 账号 %s 共获取到 %d 个商品，正在执行删除操作！\n", a.Username, total)
 	_, err := a.Http.Post(nil, fmt.Sprintf("%s/index.php?jb=delete-item_ar_end", siteURL),
 		requests.RequestOption{
+			Headers: getMobileHeaders(nil),
 			Data: map[string][]string{
 				"itemidarray[]": itemIDs,
 			},
@@ -242,6 +264,27 @@ func (a *Account) DeleteAllProduct() int {
 	}
 	log.Printf("[清空所有商品] 账号 %s 删除商品成功，共删除 %d 个商品！\n", a.Username, total)
 	return total
+}
+
+func (a *Account) GetTodo() {
+	resp, _ := a.Http.Post(nil, siteURL+"/get_notice.php", requests.RequestOption{
+		Headers: getPCHeaders(map[string]string{
+			"Accept":           "application/json, text/javascript, /; q=0.01",
+			"Accept-Language":  "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
+			"Cache-Control":    "no-cache",
+			"Connection":       "keep-alive",
+			"DNT":              "1",
+			"Origin":           "https://shoppies.jp",
+			"Pragma":           "no-cache",
+			"Referer":          "https://shoppies.jp/?jb=write-item_sp",
+			"Sec-Fetch-Dest":   "empty",
+			"Sec-Fetch-Mode":   "cors",
+			"Sec-Fetch-Site":   "same-origin",
+			"User-Agent":       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+			"X-Requested-With": "XMLHttpRequest",
+		}),
+	})
+	log.Printf("get info：%s", resp.Text())
 }
 
 func (a *Account) LoginAndDeleteProduct() (err error) {
@@ -270,7 +313,12 @@ func (a *Account) UploadImage(index, imgPath string) (ir UploadImageResponse) {
 		log.Printf("[上传图片] 账号 %s 上传图片失败，图片资源问题：%s\n", a.Username, err)
 		return
 	}
+	log.Println(a.GetAllProductIDs())
+	log.Println(a.Http.Cookies(siteURL))
 	resp, err := a.Http.Post(nil, uploadURL, requests.RequestOption{
+		//Headers: getPCHeaders(map[string]string{
+		//	//"Cookie": "shoppies_m=496eb7ac6e74a43a0c9c748415a7eb60; pcmid=80176247; session_id=199ecbadfefead1b45145f07f24560b8;",
+		//}),
 		Data: map[string]string{
 			"block":   index,
 			"dataUrl": "data:image/jpeg;base64," + b64,
@@ -281,7 +329,7 @@ func (a *Account) UploadImage(index, imgPath string) (ir UploadImageResponse) {
 		return
 	}
 	r, _ := resp.Json()
-
+	log.Println(resp.Text())
 	ir.Name = r.Get("result.name").Str
 	ir.Url = r.Get("result.image_url").Str
 	ir.Error = r.Get("result.error").Str
@@ -292,6 +340,12 @@ func (a *Account) UploadImage(index, imgPath string) (ir UploadImageResponse) {
 //
 // 使用多线程上传
 func (a *Account) UploadImages(paths [][2]string) (successfulList []string, failureList [][2]string) {
+	// 访问出品页面获取cookie
+	//cr, _ := a.Http.Get(nil, siteURL+"/?jb=write-item_sp", requests.RequestOption{
+	//	Headers: getPCHeaders(nil),
+	//})
+	//log.Println("出品页面cookie：", cr.Headers())
+
 	var (
 		wg    sync.WaitGroup
 		order [4]string
@@ -307,7 +361,11 @@ func (a *Account) UploadImages(paths [][2]string) (successfulList []string, fail
 				// 多线程可能会导致拼接顺序不一样
 				// 这个网站不是以上传时候的block为顺序点
 				idx, _ := strconv.Atoi(i[0])
-				order[idx] = ir.Name
+				if idx > 3 {
+					log.Printf("[上传商品图片] 账号 %s 正在上传商品图片 %s，卧槽，解析报错了,看看这是什么玩意：%s", a.Username, i[1], i)
+				} else {
+					order[idx] = ir.Name
+				}
 				return
 			}
 			failureList = append(failureList, i)
@@ -476,14 +534,11 @@ func (a *Account) PublishProduct(product *ProductConfig) bool {
 		"option5_title": "",
 		"option5_value": "",
 	}
-	newHeaders := getDefaultHeaders()
-	// 提交商品切换成电脑版 UA
-	newHeaders["User-Agent"] = "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.75 Safari/537.36"
 	// 开始提交商品
 	log.Println("[发布商品] 账号", a.Username, "提交数据至：", siteURL+"/write-item_conf")
 	resp, err := a.Http.Post(nil, siteURL+"/write-item_conf", requests.RequestOption{
 		Data:    payload,
-		Headers: newHeaders,
+		Headers: getPCHeaders(nil),
 	})
 	if err != nil {
 		log.Printf("[发布商品] 账号 %s 出品失败，网络错误：%s！\n", a.Username, err)
@@ -514,7 +569,7 @@ func (a *Account) PublishProduct(product *ProductConfig) bool {
 	log.Println("[发布商品] 账号", a.Username, "提交数据至：", siteURL+"/index_pc.php?jb=write-item_end")
 	resp, err = a.Http.Post(nil, siteURL+"/index_pc.php?jb=write-item_end", requests.RequestOption{
 		Data:    payload,
-		Headers: newHeaders,
+		Headers: getPCHeaders(nil),
 	})
 	if err != nil {
 		log.Printf("[发布商品] 账号 %s 确认出品失败，网络错误：%s！\n", a.Username, err)
