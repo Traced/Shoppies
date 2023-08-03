@@ -1,6 +1,7 @@
 package main
 
 import (
+	"Shoppies/tools"
 	"fmt"
 	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/net/context"
@@ -45,9 +46,9 @@ func init() {
 
 func main() {
 	// 运行任务
-	RunTasks()
-
-	//tools.Start()
+	//RunTasks()
+	//tools.StartCheckLoginTask()
+	tools.StartCountTask()
 	//Test()
 	//CheckAccountAlive()
 	//CheckChangeAccount()

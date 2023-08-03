@@ -67,8 +67,8 @@ func NewAccount(username, password, proxyAddr string) *Account {
 	//ja3String, _ := ja3.CreateSpecWithStr("772,4865-4866-4867-49195-49199-49196-49200-52393-52392-49171-49172-156-157-47-53,17513-27-43-35-13-0-11-23-5-51-10-45-16-65281-18,29-23-24,0")
 	c, _ := requests.NewClient(nil, requests.ClientOption{
 		//Ja3Spec: ja3String,
-		//Ja3:     true,
-		//H2Ja3:   true,
+		Ja3:     true,
+		H2Ja3:   true,
 		TryNum:  3,
 		Headers: getPCHeaders(nil),
 	})
@@ -109,21 +109,18 @@ func (a *Account) GetProxyIP() string {
 
 // Login 对账号进行登录操作
 //
-// 这里有坑，手机端页面跟电脑端获取的数据不一样！
+// 登录做电脑端的
 func (a *Account) Login() error {
 	a.IsLogin = false
-	loginPageURL := fmt.Sprintf("%s/user-login_test/", siteURL)
-	pcHeaders := requests.RequestOption{
+	resp, err := a.Http.Get(nil, siteURL+"/user-login_test/", requests.RequestOption{
 		Headers: getPCHeaders(nil),
-	}
-	resp, err := a.Http.Get(nil, loginPageURL, pcHeaders)
+	})
 	if err != nil {
 		log.Printf("[登录] 账号 %s 登录失败，访问登录页获取值失败：%s\n", a.Username, err)
 		return loginNetworkError
 	}
 	form := resp.Html().Find("form")
-	// 手机端
-	//form := resp.Html().Find("[action*=\"ses_id\"]")
+
 	// 获取表单
 	if form == nil {
 		logFile := "log/" + a.Username + ".login.html"
@@ -131,6 +128,7 @@ func (a *Account) Login() error {
 		log.Printf("[登录] 账号 %s 登录失败，访问登录页获取值失败,已记录在 %s\n", a.Username, logFile)
 		return errors.New("[登录] 登录失败，解析登录表单失败！")
 	}
+
 	// 重新提交数据到登录网站，以post的方式,ses_id 从表单获取
 	payload := make(map[string]string, 10)
 	// 提取表单所有值
@@ -139,12 +137,14 @@ func (a *Account) Login() error {
 	}
 	payload["loginid"] = a.Username
 	payload["password"] = a.Password
-	// 手机端
-	//postPayloadURL:=fmt.Sprintf("%s%s", siteURL, form.Get("action"))
-	postPayloadURL := form.Get("action")
 
-	pcHeaders.Data = payload
-	resp, err = a.Http.Post(nil, postPayloadURL, pcHeaders)
+	// 提交表单
+	resp, err = a.Http.Post(nil, form.Get("action"), requests.RequestOption{
+		Data: payload,
+		Headers: getPCHeaders(map[string]string{
+			"Content-Type": "application/x-www-form-urlencoded",
+		}),
+	})
 	if err != nil {
 		log.Printf("[登录] 账号 %s 登录失败, 可能存在网络问题：", err)
 		return loginNetworkError
@@ -156,8 +156,6 @@ func (a *Account) Login() error {
 	}
 	log.Printf("[登录] 账号 %s 登录成功。\n", a.Username)
 	a.IsLogin = true
-	cc, _ := a.Http.Get(nil, siteURL+"/get_notice.php")
-	log.Println(cc.Text())
 	return nil
 }
 
@@ -267,23 +265,7 @@ func (a *Account) DeleteAllProduct() int {
 }
 
 func (a *Account) GetTodo() {
-	resp, _ := a.Http.Post(nil, siteURL+"/get_notice.php", requests.RequestOption{
-		Headers: getPCHeaders(map[string]string{
-			"Accept":           "application/json, text/javascript, /; q=0.01",
-			"Accept-Language":  "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
-			"Cache-Control":    "no-cache",
-			"Connection":       "keep-alive",
-			"DNT":              "1",
-			"Origin":           "https://shoppies.jp",
-			"Pragma":           "no-cache",
-			"Referer":          "https://shoppies.jp/?jb=write-item_sp",
-			"Sec-Fetch-Dest":   "empty",
-			"Sec-Fetch-Mode":   "cors",
-			"Sec-Fetch-Site":   "same-origin",
-			"User-Agent":       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
-			"X-Requested-With": "XMLHttpRequest",
-		}),
-	})
+	resp, _ := a.Http.Get(nil, siteURL+"/get_notice.php")
 	log.Printf("get info：%s", resp.Text())
 }
 
@@ -313,12 +295,7 @@ func (a *Account) UploadImage(index, imgPath string) (ir UploadImageResponse) {
 		log.Printf("[上传图片] 账号 %s 上传图片失败，图片资源问题：%s\n", a.Username, err)
 		return
 	}
-	log.Println(a.GetAllProductIDs())
-	log.Println(a.Http.Cookies(siteURL))
 	resp, err := a.Http.Post(nil, uploadURL, requests.RequestOption{
-		//Headers: getPCHeaders(map[string]string{
-		//	//"Cookie": "shoppies_m=496eb7ac6e74a43a0c9c748415a7eb60; pcmid=80176247; session_id=199ecbadfefead1b45145f07f24560b8;",
-		//}),
 		Data: map[string]string{
 			"block":   index,
 			"dataUrl": "data:image/jpeg;base64," + b64,
@@ -329,7 +306,6 @@ func (a *Account) UploadImage(index, imgPath string) (ir UploadImageResponse) {
 		return
 	}
 	r, _ := resp.Json()
-	log.Println(resp.Text())
 	ir.Name = r.Get("result.name").Str
 	ir.Url = r.Get("result.image_url").Str
 	ir.Error = r.Get("result.error").Str
