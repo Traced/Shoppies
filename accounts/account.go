@@ -608,6 +608,14 @@ func (a *Account) CheckAlive() (err error) {
 			log.Printf("[可用检测] 账号 %s 不可用：待办事项检测到未完成邮箱认证", a.Username)
 			return AccountError
 		}
+
+		// 防止执行任务的时候突然没了
+		// 会跳登录页，关键词：class="login_bg
+		if strings.Contains(resp.Text(), "class=\"login_bg") {
+			a.LogFailedReason(errors.New("账号登录状态失效"))
+			log.Printf("[可用检测] 账号 %s 不可用：账号登录状态失效，有可能已经不可用了。暂定为不可用", a.Username)
+			return AccountError
+		}
 	}
 
 	itemID := "000"
