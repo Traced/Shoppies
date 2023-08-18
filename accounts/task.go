@@ -211,7 +211,7 @@ func (t *Task) Run() {
 	t.ProgressIndex = t.Ranges[0]
 
 	// 第一次运行程序时登录并删除商品
-	//_ = t.LoginAndDeleteProduct()
+	_ = t.LoginAndDeleteProduct()
 
 	// 开始循环
 	for {
@@ -226,7 +226,15 @@ func (t *Task) Run() {
 				log.Printf("%d 任务：%v  使用ip：%s 使用账号：%s", t.ID, t.Ranges, t.proxyAddr, t.Username)
 				// 执行任务
 				t.Execute()
-				log.Printf("任务线程 %d：%v %s 本次任务已结束，等待下次执行，当前账号商品总数量：%d", t.ID, t.Ranges, t.Username, len(t.GetAllProductIDs()))
+				productCount := len(t.GetAllProductIDs())
+				log.Printf("任务线程 %d：%v %s 本次任务已结束，等待下次执行，当前账号商品总数量：%d", t.ID, t.Ranges, t.Username, productCount)
+				if productCount >= 95 {
+					log.Printf("任务线程 %d：%v %s 商品数量已达95，切换下一个账号。", t.ID, t.Ranges, t.Username)
+					if err := t.NextAccount(); err != nil {
+						log.Printf("任务线程 %d：%v %s 商品数量达标，换号失败，终止线程任务：%s", t.ID, t.Ranges, t.Username, err)
+						return
+					}
+				}
 			} else if errors.Is(loginError, EmptyAccountError) {
 				// 账号库存不足
 				log.Println("请补充总账号库存！")
@@ -265,6 +273,7 @@ func (t *Task) TryLogin() error {
 	t.Http.Close()
 	// 每一轮使用新的客户端
 	t.Account = NewAccount(t.Username, t.Password, t.ReadTaskProxyIP())
+	t.IsLogin = false
 	log.Printf("%d 任务：%v 读取ip：%s ", t.ID, t.Ranges, t.proxyAddr)
 
 	// 检查账号是否可用，不可用自动补充：对于没登陆的账号会自动自动
@@ -361,10 +370,10 @@ func (t *Task) Execute() {
 			// 这两种情况无论是哪一种，都得等下一个任务时间点
 			// 因为在触发定时任务时做了错误判断，所以可以直接结束掉本轮任务执行
 			if t.NextAccount() != nil {
-				// 检测通过，删除所有商品
-				t.DeleteAllProduct()
 				return
 			}
+			// 检测通过，删除所有商品
+			t.DeleteAllProduct()
 			log.Printf("[执行任务-发布商品信息] 切换账号至 %s 开始任务，任务 ID： %d！", t.Username, t.ID)
 		}
 

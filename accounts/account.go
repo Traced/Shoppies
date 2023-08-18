@@ -165,9 +165,11 @@ func (a *Account) GetProductNumAndTotalPage() (num, totalPage int) {
 		log.Printf("[获取商品总数] 账号 %s 获取失败，请先登录！\n", a.Username)
 		return
 	}
+	ck, _ := a.Http.Cookies(siteURL)
 	resp, err := a.Http.Get(nil, fmt.Sprintf("%s/index.php?jb=member-item_user_list", siteURL),
 		requests.RequestOption{
 			Headers: getMobileHeaders(nil),
+			Cookies: ck,
 		})
 	if err != nil {
 		log.Printf("[获取商品总数] 账号 %s 获取失败，可能是网络问题？：%s\n", a.Username, err)
@@ -637,7 +639,9 @@ func (a *Account) CheckAlive() (err error) {
 
 	checkBadPageURL := fmt.Sprintf("%s/index_pc.php?jb=member-order&id=%s", siteURL, itemID)
 	log.Printf("[可用检测] 账号 %s 访问订单页面：%s\n", a.Username, checkBadPageURL)
-	resp, err = a.Http.Get(nil, checkBadPageURL)
+	resp, err = a.Http.Get(nil, checkBadPageURL, requests.RequestOption{
+		Headers: getMobileHeaders(nil),
+	})
 	if err != nil {
 		log.Printf("[可用检测] 账号 %s 检测失败，不作判断。或可能存在网络错误：%s\n", a.Username, err)
 		return

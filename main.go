@@ -1,7 +1,6 @@
 package main
 
 import (
-	"Shoppies/tools"
 	"fmt"
 	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/net/context"
@@ -41,14 +40,14 @@ func init() {
 	log.SetFlags(log.Lshortfile | log.Ldate | log.Ltime | log.Lmicroseconds)
 
 	// 设置同时写日志到控制台和文件
-	//utils.SetLogOutputFile("log/run.txt")
+	utils.SetLogOutputFile("log/run.txt")
 }
 
 func main() {
 	// 运行任务
-	//RunTasks()
+	RunTasks()
 	//tools.StartCheckLoginTask()
-	tools.StartCountTask()
+	//tools.StartCountTask()
 	//Test()
 	//CheckAccountAlive()
 	//CheckChangeAccount()
