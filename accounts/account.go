@@ -569,7 +569,7 @@ func (a *Account) LogFailedReason(err error) {
 	writeBadLock.Lock()
 	defer writeBadLock.Unlock()
 	// 一行一个：用户名 密码 错误信息
-	line := []byte("\n" + a.Username + " " + a.Password + "" + err.Error() + "\n")
+	line := []byte("\n" + utils.GetCurrentDateString() + a.Username + " " + a.Password + "" + err.Error() + "\n")
 	utils.WriteFile(badReasonFilepath, line, os.O_APPEND)
 }
 
