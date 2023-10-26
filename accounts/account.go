@@ -124,7 +124,7 @@ func (a *Account) Login() error {
 	// 获取表单
 	if form == nil {
 		logFile := "log/" + a.Username + ".login.html"
-		utils.LogFile(logFile, resp.Text())
+		//utils.LogFile(logFile, resp.Text())
 		log.Printf("[登录] 账号 %s 登录失败，访问登录页获取值失败,已记录在 %s\n", a.Username, logFile)
 		return errors.New("[登录] 登录失败，解析登录表单失败！")
 	}
@@ -178,7 +178,7 @@ func (a *Account) GetProductNumAndTotalPage() (num, totalPage int) {
 	numBar := resp.Html().Find(".tempPageTitleBar")
 	if nil == numBar {
 		logFilepath := "log/product.num." + a.Username + ".html"
-		utils.LogFile(logFilepath, resp.Text())
+		//utils.LogFile(logFilepath, resp.Text())
 		log.Printf("[获取商品总数] 账号 %s 获取失败，没有获取到总数，已记录到：%s\n", a.Username, logFilepath)
 		return
 	}
@@ -532,7 +532,7 @@ func (a *Account) PublishProduct(product *ProductConfig) bool {
 		warning := form.Find(".newsDetailsText")
 		if warning == nil {
 			pageLogFile := "log/write-item_conf." + a.Username + "-" + product.ID + ".html"
-			utils.LogFile(pageLogFile, resp.Text())
+			//utils.LogFile(pageLogFile, resp.Text())
 			product.Error = errors.New("没找到conf值")
 			log.Printf("[发布商品] 账号 %s 确认出品失败，没找到conf值，未知原因，已记录页面信息：%s！\n", a.Username, pageLogFile)
 			return false
@@ -556,7 +556,7 @@ func (a *Account) PublishProduct(product *ProductConfig) bool {
 	// 出品失败可能是需要过验证码，当前版本没有过谷歌验证码
 	if !strings.Contains(resp.Text(), "出品が完了") {
 		logFilepath := "log/write.end" + product.ID + "." + a.Username + ".html"
-		utils.LogFile(logFilepath, resp.Text())
+		//utils.LogFile(logFilepath, resp.Text())
 		log.Printf("[发布商品] 账号 %s 确认出品失败，失败页面已记录到文件：%s！\n", a.Username, logFilepath)
 		return false
 	}
@@ -569,7 +569,7 @@ func (a *Account) LogFailedReason(err error) {
 	writeBadLock.Lock()
 	defer writeBadLock.Unlock()
 	// 一行一个：用户名 密码 错误信息
-	line := []byte("\n" + utils.GetCurrentDateString() + a.Username + " " + a.Password + "" + err.Error() + "\n")
+	line := []byte("\n" + utils.GetCurrentDateString() + " " + a.Username + " " + a.Password + "" + err.Error() + "\n")
 	utils.WriteFile(badReasonFilepath, line, os.O_APPEND)
 }
 
@@ -631,7 +631,7 @@ func (a *Account) CheckAlive() (err error) {
 		// 还是记录下什么情况吧，方便后续查看分析
 		if 2 > len(matched) {
 			log.Printf("[可用检测] 账号 %s 访问主页获取商品ID失败，没找到商品，已记录：%s ", a.Username, "log/item-list."+a.Username+".html")
-			utils.LogFile("log/item-list."+a.Username+".html", resp.Text())
+			//utils.LogFile("log/item-list."+a.Username+".html", resp.Text())
 		} else {
 			itemID = matched[1]
 		}

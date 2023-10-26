@@ -211,7 +211,9 @@ func (t *Task) Run() {
 	t.ProgressIndex = t.Ranges[0]
 
 	// 第一次运行程序时登录并删除商品
-	_ = t.LoginAndDeleteProduct()
+	//_ = t.LoginAndDeleteProduct()
+	// 登录时候不删品
+	_ = t.Login()
 
 	// 开始循环
 	for {
@@ -234,6 +236,7 @@ func (t *Task) Run() {
 						log.Printf("任务线程 %d：%v %s 商品数量达标，换号失败，终止线程任务：%s", t.ID, t.Ranges, t.Username, err)
 						return
 					}
+					t.DeleteAllProduct()
 				}
 			} else if errors.Is(loginError, EmptyAccountError) {
 				// 账号库存不足
@@ -396,7 +399,8 @@ func (t *Task) Execute() {
 
 	// 时间，负载过重。不尝试了
 	if pc.Error != nil && strings.Contains(pc.Error.Error(), "時間") {
-		return
+		log.Printf("[执行任务-发布商品] 发布失败，账号 %s 遇见错误：%s\n", t.Username, pc.Error.Error())
+		//return
 	}
 
 	/* 失败重试部分

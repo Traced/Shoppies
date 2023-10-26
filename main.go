@@ -44,6 +44,7 @@ func init() {
 }
 
 func main() {
+	println("终端日志已关闭，如需查看日志请使用 Sublime 查看 log 目录下的 run.txt")
 	// 运行任务
 	RunTasks()
 	//tools.StartCheckLoginTask()
