@@ -14,7 +14,7 @@ import (
 
 	"Shoppies/accounts"
 	"Shoppies/utils"
-	"gitee.com/baixudong/gospider/requests"
+	"github.com/gospider007/requests"
 )
 
 var (

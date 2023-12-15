@@ -25,6 +25,7 @@ func LogFile(path, data string) bool {
 func SetLogOutputFile(filepath string) {
 	// 设置同时写日志到控制台和文件
 	if f, err := os.OpenFile(filepath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666); err == nil {
-		log.SetOutput(io.MultiWriter(os.Stdout, f))
+		log.SetOutput(io.MultiWriter(f))
+		//log.SetOutput(io.MultiWriter(os.Stdout, f))
 	}
 }

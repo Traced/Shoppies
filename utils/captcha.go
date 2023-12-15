@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"time"
 
-	"gitee.com/baixudong/gospider/requests"
+	"github.com/gospider007/requests"
 )
 
 func NewYesCaptcha(apiKey, typ, siteURL, siteKey string) *YesCaptcha {
@@ -16,8 +16,9 @@ func NewYesCaptcha(apiKey, typ, siteURL, siteKey string) *YesCaptcha {
 var (
 	yesCaptchaApiURL, _ = url.Parse("https://api.yescaptcha.com")
 	http, _             = requests.NewClient(nil, requests.ClientOption{
-		TryNum: 3,
-		OptionCallBack: func(_ context.Context, option *requests.RequestOption) error {
+		MaxRetries: 3,
+
+		OptionCallBack: func(_ context.Context, _ *requests.Client, option *requests.RequestOption) error {
 			// 相对路径加上 url
 			if !option.Url.IsAbs() {
 				option.Url = yesCaptchaApiURL.ResolveReference(option.Url)

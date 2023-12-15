@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"Shoppies/utils"
-	"gitee.com/baixudong/gospider/requests"
+	"github.com/gospider007/requests"
 )
 
 func NewTask(id, maxSuccessAttempts, taskAccountNum, minute, seconds, retry, interval int, taskAccountFilepath string, ranges TaskRange, username, password string) *Task {
@@ -188,23 +188,17 @@ func (t *Task) ReadTaskProxyIP() string {
 // Run 开始执行任务
 func (t *Task) Run() {
 	// 每小时几分开始执行任务
-	minute, sec, hourAfter := t.StartMinute, t.StartSeconds, 1
+	minute := t.StartMinute
 	//minute, sec, hourAfter := time.Now().Minute(), time.Now().Second()+3, 0
 	log.Println("[执行任务] 任务启动 -", t.ID, "-", t.Username,
 		"任务分段：", t.Ranges,
 		"使用代理：", t.ReadTaskProxyIP(),
-		"每小时", minute, "分，",
-		sec+t.PublishInterval, "秒开始执行任务，重试次数：", t.RetryTimes,
+		"每隔", minute, "分钟执一次行任务，",
+		"重试次数：", t.RetryTimes,
 		"商品发布间隔：", t.PublishInterval)
 
-	// 获取当前时间
-	now := time.Now()
-	// 计算下一个小时的准点时间
-	nextHour := time.Date(now.Year(), now.Month(), now.Day(), now.Hour()+hourAfter, minute, sec, 0, now.Location())
-	// 计算当前时间和下一个小时准点时间的时间差
-	waitDuration := nextHour.Sub(now)
 	// 创建定时器
-	ticker := time.NewTicker(waitDuration)
+	ticker := time.NewTicker(time.Duration(minute) * time.Minute)
 	defer ticker.Stop()
 
 	// 设置开始编号
@@ -228,6 +222,7 @@ func (t *Task) Run() {
 				log.Printf("%d 任务：%v  使用ip：%s 使用账号：%s", t.ID, t.Ranges, t.proxyAddr, t.Username)
 				// 执行任务
 				t.Execute()
+
 				productCount := len(t.GetAllProductIDs())
 				log.Printf("任务线程 %d：%v %s 本次任务已结束，等待下次执行，当前账号商品总数量：%d", t.ID, t.Ranges, t.Username, productCount)
 				if productCount >= 95 {
@@ -250,11 +245,6 @@ func (t *Task) Run() {
 				// 因为可能影响到后续操作
 				//return
 			}
-			// 重新计算下一个小时的准点时间和等待时间
-			now = time.Now()
-			nextHour = time.Date(now.Year(), now.Month(), now.Day(), now.Hour()+1, minute, sec, 0, now.Location())
-			waitDuration = nextHour.Sub(now)
-			ticker.Reset(waitDuration)
 		}
 	}
 }
@@ -392,8 +382,7 @@ func (t *Task) Execute() {
 			}
 		}
 
-		// 继续下一个商品的发布
-		t.Execute()
+		// 发布成功后就等待下一轮的定时任务
 		return
 	}
 
@@ -428,7 +417,8 @@ func (t *Task) Execute() {
 		}
 		log.Println("[执行任务-发布商品] 发布失败，账号存在问题，已换号")
 	}
-	log.Printf("[执行任务-发布商品] 发布失败，账号 %s 正在重试第 %d/%d 次\n", t.Username, t.retryCount, t.RetryTimes)
+	log.Printf("[执行任务-发布商品] 发布失败，账号 %s 十秒后开始重试第 %d/%d 次\n", t.Username, t.retryCount, t.RetryTimes)
+	time.Sleep(time.Second * 10)
 	t.Execute()
 	return
 }
@@ -476,7 +466,7 @@ func (t *Task) SetProxyAddr(addr string) error {
 
 // CheckProxyAvailable 检查当前代理是否可用
 func (t *Task) CheckProxyAvailable(addr string) bool {
-	return true
+	//return true
 	// 传空就是检测当前设置的代理
 	if addr == "" {
 		addr = t.proxyAddr

@@ -3,17 +3,17 @@ package accounts
 import (
 	"errors"
 	"fmt"
+	jsoniter "github.com/json-iterator/go"
 	"log"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
 	"sync"
-
-	jsoniter "github.com/json-iterator/go"
+	"time"
 
 	"Shoppies/utils"
-	"gitee.com/baixudong/gospider/requests"
+	"github.com/gospider007/requests"
 )
 
 var (
@@ -67,10 +67,9 @@ func NewAccount(username, password, proxyAddr string) *Account {
 	//ja3String, _ := ja3.CreateSpecWithStr("772,4865-4866-4867-49195-49199-49196-49200-52393-52392-49171-49172-156-157-47-53,17513-27-43-35-13-0-11-23-5-51-10-45-16-65281-18,29-23-24,0")
 	c, _ := requests.NewClient(nil, requests.ClientOption{
 		//Ja3Spec: ja3String,
-		Ja3:     true,
-		H2Ja3:   true,
-		TryNum:  3,
-		Headers: getPCHeaders(nil),
+		Ja3:        true,
+		MaxRetries: 3,
+		Headers:    getPCHeaders(nil),
 	})
 
 	if proxyAddr != "" {
@@ -104,7 +103,7 @@ func (a *Account) GetProxyIP() string {
 		return ""
 	}
 	r, _ := resp.Json()
-	return r.Get("query").Str
+	return r.Get("query").String()
 }
 
 // Login 对账号进行登录操作
@@ -165,7 +164,7 @@ func (a *Account) GetProductNumAndTotalPage() (num, totalPage int) {
 		log.Printf("[获取商品总数] 账号 %s 获取失败，请先登录！\n", a.Username)
 		return
 	}
-	ck, _ := a.Http.Cookies(siteURL)
+	ck, _ := a.Http.GetCookies(siteURL)
 	resp, err := a.Http.Get(nil, fmt.Sprintf("%s/index.php?jb=member-item_user_list", siteURL),
 		requests.RequestOption{
 			Headers: getMobileHeaders(nil),
@@ -240,6 +239,12 @@ func (a *Account) GetAllProductIDs() (ids []string) {
 func (a *Account) DeleteAllProduct() int {
 	if !a.IsLogin {
 		log.Printf("[清空所有商品] 账号 %s 删除商品失败，请先登录！\n", a.Username)
+		log.Printf("[清空所有商品] 账号 %s 删除商品失败，未登录，正在尝试登录！\n", a.Username)
+		err := a.Login()
+		if err == nil {
+			return a.DeleteAllProduct()
+		}
+		log.Printf("[清空所有商品] 账号 %s 删除商品失败，尝试登录失败：%s！\n", a.Username, err)
 		return 0
 	}
 	var (
@@ -308,9 +313,9 @@ func (a *Account) UploadImage(index, imgPath string) (ir UploadImageResponse) {
 		return
 	}
 	r, _ := resp.Json()
-	ir.Name = r.Get("result.name").Str
-	ir.Url = r.Get("result.image_url").Str
-	ir.Error = r.Get("result.error").Str
+	ir.Name = r.Get("result.name").String()
+	ir.Url = r.Get("result.image_url").String()
+	ir.Error = r.Get("result.error").String()
 	return
 }
 
@@ -353,6 +358,14 @@ func (a *Account) UploadImages(paths [][2]string) (successfulList []string, fail
 	wg.Wait()
 	// 利用数组特性，让无序变有序
 	successfulList = order[:]
+
+	// 数组初始化容量跟大小都是固定死的，换到切片后得去掉零值，否则可能会影响统计
+	for _, i := range successfulList {
+		if i != "" {
+			successfulList = append(successfulList, i)
+		}
+	}
+	successfulList = successfulList[4:]
 	return
 }
 
@@ -360,6 +373,8 @@ func (a *Account) UploadImages(paths [][2]string) (successfulList []string, fail
 func (a *Account) SlowUploadImages(paths [][2]string) (successfulList []string, failureList [][2]string) {
 	for _, i := range paths {
 		log.Printf("[上传商品图片] 账号 %s 正在上传商品图片 %s\n", a.Username, i[1])
+		// 给每一张图片上传增加延迟
+		time.Sleep(time.Second * 5)
 		ir := a.UploadImage(i[0], i[1])
 		// 上传成功
 		if ir.Error == "" {
@@ -389,7 +404,7 @@ func (a *Account) UploadImageForProduct(product *ProductConfig) error {
 		}
 	}
 	// 开始上传
-	successful, failure := a.UploadImages(imgPaths)
+	successful, failure := a.SlowUploadImages(imgPaths)
 	// 图片名字使用,进行拼接，表单格式如此
 	product.PictureURL = strings.Join(successful, ",")
 	// 上传成功的数量
