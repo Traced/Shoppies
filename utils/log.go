@@ -22,10 +22,19 @@ func LogFile(path, data string) bool {
 	return true
 }
 
+var (
+	// DisabledTerminalLog 禁用终端日志输出
+	DisabledTerminalLog = false
+)
+
 func SetLogOutputFile(filepath string) {
 	// 设置同时写日志到控制台和文件
 	if f, err := os.OpenFile(filepath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666); err == nil {
-		log.SetOutput(io.MultiWriter(f))
-		//log.SetOutput(io.MultiWriter(os.Stdout, f))
+		// 只输出日志到文件
+		if DisabledTerminalLog {
+			log.SetOutput(io.MultiWriter(f))
+			return
+		}
+		log.SetOutput(io.MultiWriter(os.Stdout, f))
 	}
 }

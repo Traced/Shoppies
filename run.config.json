@@ -1,7 +1,9 @@
 {
-  "max_success_attempts": 5,
-  "minute": 0,
+  "max_success_attempts": 3,
+  "minute": 2,
   "seconds": 10,
   "retry": 3,
-  "interval": 5
+  "interval": 5,
+  "disabled_proxy": true,
+  "disabled_terminal_log": true
 }

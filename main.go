@@ -24,6 +24,8 @@ var (
 
 	// 一行一个的配置文件中使用的字段分隔
 	configFileSeparate = "----"
+
+	runConfig RunConfig
 )
 
 type (
@@ -33,11 +35,28 @@ type (
 		Seconds            int `json:"seconds"`
 		Retry              int `json:"retry"`
 		Interval           int `json:"interval"`
+		// 是否在程序中禁用代理
+		DisabledProxy bool `json:"disabled_proxy"`
+		// 禁用终端日志输出
+		DisabledTerminalLog bool `json:"disabled_terminal_log"`
 	}
 )
 
 func init() {
 	log.SetFlags(log.Lshortfile | log.Ldate | log.Ltime | log.Lmicroseconds)
+
+	// 读取运行配置
+	runConfigBytesData, err := os.ReadFile(runConfigFilepath)
+
+	// 读取到配置文件
+	if err == nil {
+		if jsoniter.Unmarshal(runConfigBytesData, &runConfig) != nil {
+			log.Println("[初始化] run.config.json 读取失败！")
+			return
+		}
+		// 是否禁用终端日志
+		utils.DisabledTerminalLog = runConfig.DisabledTerminalLog
+	}
 
 	// 设置同时写日志到控制台和文件
 	utils.SetLogOutputFile("log/run.txt")
@@ -58,7 +77,7 @@ func main() {
 func CheckChangeAccount() {
 	a := accounts.NewTask(
 		0, 2, 3,
-		47, 0, 2, 2,
+		47, 0, 2, 2, false,
 		"account.txt", accounts.TaskRange{0, 3},
 		"ttheqyhrzyrra@outlook.com", "z123456")
 	_ = a.CheckAliveAndSupplement()
@@ -70,17 +89,6 @@ func RunTasks() {
 		log.Println("[初始化] range.txt 读取失败：", err)
 		return
 	}
-	runConfigBytesData, err := os.ReadFile(runConfigFilepath)
-	if err != nil {
-		log.Println("[初始化] range.txt 读取失败：", err)
-		return
-	}
-	var runConfig RunConfig
-
-	if jsoniter.Unmarshal(runConfigBytesData, &runConfig) != nil {
-		log.Println("[初始化] run.config.json 读取失败！")
-		return
-	}
 	var (
 		tasks accounts.TaskList
 		// 一行一个
@@ -90,7 +98,8 @@ func RunTasks() {
 		mainAccountCount, _ = utils.CountNonEmptyLines(accountFilepath)
 	)
 
-	log.Println("[初始化] 从 range.txt 读取到：", total, "个任务分段，总账号库账号数量：", mainAccountCount)
+	log.Println("[初始化] 从 range.txt 读取到：", total, "个任务分段，总账号库账号数量：", mainAccountCount,
+		"，程序是否禁用代理：", runConfig.DisabledProxy)
 
 	for id, r := range ranges {
 		rs := strings.Split(strings.TrimSpace(r), configFileSeparate)
@@ -157,7 +166,7 @@ func RunTasks() {
 		// 加入到任务管理器中
 		tasks = append(tasks, accounts.NewTask(
 			id, runConfig.MaxSuccessAttempts, totalTaskAccount,
-			runConfig.Minute, runConfig.Seconds, runConfig.Retry, runConfig.Interval,
+			runConfig.Minute, runConfig.Seconds, runConfig.Retry, runConfig.Interval, runConfig.DisabledProxy,
 			loopAccountFilename, accounts.TaskRange{start, end},
 			account[0], account[1]))
 	}

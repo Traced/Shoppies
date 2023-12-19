@@ -5,7 +5,7 @@ import (
 	"Shoppies/utils"
 	"errors"
 	"fmt"
-	"gitee.com/baixudong/gospider/requests"
+	"github.com/gospider007/requests"
 	"log"
 	"os"
 	"regexp"

@@ -605,15 +605,17 @@ type (
 func (a *Account) CheckAlive() (err error) {
 	log.Printf("[可用检测] 开始检测账号 %s 的可用性\n", a.Username)
 	// 账号还没登录，先登录一下
-	if !a.IsLogin {
-		log.Printf("[可用检测] 账号 %s 进行登录\n", a.Username)
-		// 登录失败
-		if err = a.Login(); errors.Is(err, AccountError) {
-			a.LogFailedReason(errors.New("登录异常"))
-			log.Printf("[可用检测] 账号 %s 不可用: %s", a.Username, err)
-			return AccountError
-		}
+	//if !a.IsLogin {
+	// 清理 cookie，重新登录进行检测
+	a.Http.ClearCookies()
+	log.Printf("[可用检测] 账号 %s 进行登录\n", a.Username)
+	// 登录失败
+	if err = a.Login(); errors.Is(err, AccountError) {
+		a.LogFailedReason(errors.New("登录异常"))
+		log.Printf("[可用检测] 账号 %s 不可用: %s", a.Username, err)
+		return AccountError
 	}
+	//}
 
 	// 检测待办事项中是否有完成电子邮件验证提示
 	resp, err := a.Http.Get(nil, siteURL+"/?jb=member-todo_list")

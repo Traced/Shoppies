@@ -13,7 +13,7 @@ import (
 	"github.com/gospider007/requests"
 )
 
-func NewTask(id, maxSuccessAttempts, taskAccountNum, minute, seconds, retry, interval int, taskAccountFilepath string, ranges TaskRange, username, password string) *Task {
+func NewTask(id, maxSuccessAttempts, taskAccountNum, minute, seconds, retry, interval int, disabledProxy bool, taskAccountFilepath string, ranges TaskRange, username, password string) *Task {
 	return &Task{
 		ID:                  id,
 		TaskAccountFilepath: taskAccountFilepath,
@@ -32,6 +32,8 @@ func NewTask(id, maxSuccessAttempts, taskAccountNum, minute, seconds, retry, int
 		// 工作流程开始执行的时间
 		StartMinute:  minute,
 		StartSeconds: seconds,
+		// 不使用代理
+		DisabledProxy: disabledProxy,
 	}
 }
 
@@ -176,10 +178,16 @@ type (
 		// 程序执行时间: 开始工作流程的时间
 		StartMinute  int
 		StartSeconds int
+
+		// 任务是否禁用代理
+		DisabledProxy bool
 	}
 )
 
 func (t *Task) ReadTaskProxyIP() string {
+	if t.DisabledProxy {
+		return ""
+	}
 	ip, _ := utils.ReadFileAtLine("proxy.txt", t.ID+1)
 	t.proxyAddr = ip
 	return ip
@@ -190,9 +198,14 @@ func (t *Task) Run() {
 	// 每小时几分开始执行任务
 	minute := t.StartMinute
 	//minute, sec, hourAfter := time.Now().Minute(), time.Now().Second()+3, 0
+	proxyTips := "不使用代理"
+	if !t.DisabledProxy {
+		proxyTips = "使用代理：" + t.ReadTaskProxyIP()
+	}
+
 	log.Println("[执行任务] 任务启动 -", t.ID, "-", t.Username,
 		"任务分段：", t.Ranges,
-		"使用代理：", t.ReadTaskProxyIP(),
+		proxyTips,
 		"每隔", minute, "分钟执一次行任务，",
 		"重试次数：", t.RetryTimes,
 		"商品发布间隔：", t.PublishInterval)
@@ -251,6 +264,11 @@ func (t *Task) Run() {
 
 // ChangeProxy 更换代理
 func (t *Task) ChangeProxy() error {
+	// 禁用代理
+	if t.DisabledProxy {
+		return nil
+	}
+
 	proxyAddr := PopupProxyAddr()
 	// 获取失败
 	if proxyAddr == "" {
@@ -460,6 +478,10 @@ func (t *Task) SetAccount(username, password string) error {
 
 // SetProxyAddr 设置当前任务使用的代理
 func (t *Task) SetProxyAddr(addr string) error {
+	// 禁用代理
+	if t.DisabledProxy {
+		return nil
+	}
 	t.proxyAddr = addr
 	return t.Http.SetProxy(addr)
 }
