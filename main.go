@@ -39,6 +39,8 @@ type (
 		DisabledProxy bool `json:"disabled_proxy"`
 		// 禁用终端日志输出
 		DisabledTerminalLog bool `json:"disabled_terminal_log"`
+		// 仅在非并发传图时候生效
+		UploadImageDelaySeconds int `json:"upload_image_delay_seconds"`
 	}
 )
 
@@ -77,7 +79,7 @@ func main() {
 func CheckChangeAccount() {
 	a := accounts.NewTask(
 		0, 2, 3,
-		47, 0, 2, 2, false,
+		47, 0, 2, 2, false, 5,
 		"account.txt", accounts.TaskRange{0, 3},
 		"ttheqyhrzyrra@outlook.com", "z123456")
 	_ = a.CheckAliveAndSupplement()
@@ -166,7 +168,7 @@ func RunTasks() {
 		// 加入到任务管理器中
 		tasks = append(tasks, accounts.NewTask(
 			id, runConfig.MaxSuccessAttempts, totalTaskAccount,
-			runConfig.Minute, runConfig.Seconds, runConfig.Retry, runConfig.Interval, runConfig.DisabledProxy,
+			runConfig.Minute, runConfig.Seconds, runConfig.Retry, runConfig.Interval, runConfig.DisabledProxy, runConfig.UploadImageDelaySeconds,
 			loopAccountFilename, accounts.TaskRange{start, end},
 			account[0], account[1]))
 	}

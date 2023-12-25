@@ -80,14 +80,17 @@ func NewAccount(username, password, proxyAddr string) *Account {
 		Username: username,
 		Password: password,
 		Http:     c,
+		// 默认5秒
+		UploadImageDelaySeconds: 5,
 	}
 }
 
 type Account struct {
-	Username string           `json:"username"`
-	Password string           `json:"password"`
-	IsLogin  bool             `json:"-"`
-	Http     *requests.Client `json:"-"`
+	Username                string           `json:"username"`
+	Password                string           `json:"password"`
+	IsLogin                 bool             `json:"-"`
+	Http                    *requests.Client `json:"-"`
+	UploadImageDelaySeconds int              `json:"-"`
 }
 
 // SetProxy 设置这个账号使用的代理
@@ -374,7 +377,7 @@ func (a *Account) SlowUploadImages(paths [][2]string) (successfulList []string, 
 	for _, i := range paths {
 		log.Printf("[上传商品图片] 账号 %s 正在上传商品图片 %s\n", a.Username, i[1])
 		// 给每一张图片上传增加延迟
-		time.Sleep(time.Second * 5)
+		time.Sleep(time.Second * time.Duration(a.UploadImageDelaySeconds))
 		ir := a.UploadImage(i[0], i[1])
 		// 上传成功
 		if ir.Error == "" {
@@ -383,6 +386,36 @@ func (a *Account) SlowUploadImages(paths [][2]string) (successfulList []string, 
 		}
 		failureList = append(failureList, i)
 		log.Printf("[上传商品图片] 账号 %s 上传商品 %s 图片失败：%s\n", a.Username, i[1], ir.Error)
+	}
+	return
+}
+
+// SlowRetryUploadImages 一张张的上传图片
+func (a *Account) SlowRetryUploadImages(paths [][2]string, retrySeconds int) (successfulList []string, failureList [][2]string) {
+	for _, i := range paths {
+		log.Printf("[上传商品图片] 账号 %s 正在上传商品图片 %s\n", a.Username, i[1])
+		// 给每一张图片上传增加延迟
+		time.Sleep(time.Second * time.Duration(a.UploadImageDelaySeconds))
+		ir := a.UploadImage(i[0], i[1])
+		// 上传成功
+		if ir.Error == "" {
+			successfulList = append(successfulList, ir.Name)
+			continue
+		}
+
+		// 某一张失败重传
+		for {
+			log.Printf("[上传商品图片] 账号 %s 上传商品 %s 图片失败：%s，%d秒后重试\n", a.Username, i[1], ir.Error, retrySeconds)
+			// 五秒之后重传
+			time.Sleep(time.Second * time.Duration(retrySeconds))
+			ir := a.UploadImage(i[0], i[1])
+			// 上传成功
+			if ir.Error == "" {
+				successfulList = append(successfulList, ir.Name)
+				break
+			}
+		}
+		//failureList = append(failureList, i)
 	}
 	return
 }
@@ -404,7 +437,7 @@ func (a *Account) UploadImageForProduct(product *ProductConfig) error {
 		}
 	}
 	// 开始上传
-	successful, failure := a.SlowUploadImages(imgPaths)
+	successful, failure := a.SlowRetryUploadImages(imgPaths, 5)
 	// 图片名字使用,进行拼接，表单格式如此
 	product.PictureURL = strings.Join(successful, ",")
 	// 上传成功的数量

@@ -13,7 +13,12 @@ import (
 	"github.com/gospider007/requests"
 )
 
-func NewTask(id, maxSuccessAttempts, taskAccountNum, minute, seconds, retry, interval int, disabledProxy bool, taskAccountFilepath string, ranges TaskRange, username, password string) *Task {
+func NewTask(id, maxSuccessAttempts, taskAccountNum, minute, seconds, retry, interval int, disabledProxy bool, uploadImageDelaySeconds int, taskAccountFilepath string, ranges TaskRange, username, password string) *Task {
+	account := NewAccount(username, password, "")
+	// -1 使用默认传图间隔
+	if uploadImageDelaySeconds > -1 {
+		account.UploadImageDelaySeconds = uploadImageDelaySeconds
+	}
 	return &Task{
 		ID:                  id,
 		TaskAccountFilepath: taskAccountFilepath,
@@ -24,7 +29,7 @@ func NewTask(id, maxSuccessAttempts, taskAccountNum, minute, seconds, retry, int
 		LoopAccountNum:     taskAccountNum,
 		// 当前账号在循环库中的位置
 		AccountIndex: 0,
-		Account:      NewAccount(username, password, ""),
+		Account:      account,
 		// 传品失败重试次数，3次过后就等待下一轮
 		RetryTimes: retry,
 		// 间隔三秒
@@ -360,8 +365,6 @@ func (t *Task) Execute() {
 	// 上传商品图片
 	// 上传失败 或者 一张都没上传上去
 	if nil != t.UploadImageForProduct(&pc) || 1 > pc.SuccessfulCount {
-		// 如果需要做失败的图片重传，可以判断下...
-		// 但是由于时间关系，先不做这个
 		// if len(pc.FailureList)>0{
 		//	t.UploadImages(pc.FailureList)
 		// }
