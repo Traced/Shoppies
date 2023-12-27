@@ -7,4 +7,5 @@
   "disabled_proxy": true,
   "disabled_terminal_log": false,
   "upload_image_delay_seconds": 5,
+  "upload_image_failures_retries": 3
 }

@@ -86,11 +86,12 @@ func NewAccount(username, password, proxyAddr string) *Account {
 }
 
 type Account struct {
-	Username                string           `json:"username"`
-	Password                string           `json:"password"`
-	IsLogin                 bool             `json:"-"`
-	Http                    *requests.Client `json:"-"`
-	UploadImageDelaySeconds int              `json:"-"`
+	Username                   string           `json:"username"`
+	Password                   string           `json:"password"`
+	IsLogin                    bool             `json:"-"`
+	Http                       *requests.Client `json:"-"`
+	UploadImageDelaySeconds    int              `json:"-"`
+	UploadImageFailuresRetries int              `json:"-"`
 }
 
 // SetProxy 设置这个账号使用的代理
@@ -404,8 +405,9 @@ func (a *Account) SlowRetryUploadImages(paths [][2]string, retrySeconds int) (su
 		}
 
 		// 某一张失败重传
-		for {
-			log.Printf("[上传商品图片] 账号 %s 上传商品 %s 图片失败：%s，%d秒后重试\n", a.Username, i[1], ir.Error, retrySeconds)
+		for ri := 1; ri <= a.UploadImageFailuresRetries; ri++ {
+			log.Printf("[上传商品图片] 账号 %s 上传商品 %s 图片失败：%s，%d秒后重试，重试次数：%d/%d\n",
+				a.Username, i[1], ir.Error, retrySeconds, ri, a.UploadImageFailuresRetries)
 			// 五秒之后重传
 			time.Sleep(time.Second * time.Duration(retrySeconds))
 			ir := a.UploadImage(i[0], i[1])

@@ -41,6 +41,8 @@ type (
 		DisabledTerminalLog bool `json:"disabled_terminal_log"`
 		// 仅在非并发传图时候生效
 		UploadImageDelaySeconds int `json:"upload_image_delay_seconds"`
+		// 上传失败的图片继续重试上传的次数
+		UploadImageFailuresRetries int `json:"upload_image_failures_retries"`
 	}
 )
 
@@ -79,7 +81,7 @@ func main() {
 func CheckChangeAccount() {
 	a := accounts.NewTask(
 		0, 2, 3,
-		47, 0, 2, 2, false, 5,
+		47, 0, 2, 2, false, 5, 5,
 		"account.txt", accounts.TaskRange{0, 3},
 		"ttheqyhrzyrra@outlook.com", "z123456")
 	_ = a.CheckAliveAndSupplement()
@@ -101,7 +103,9 @@ func RunTasks() {
 	)
 
 	log.Println("[初始化] 从 range.txt 读取到：", total, "个任务分段，总账号库账号数量：", mainAccountCount,
-		"，程序是否禁用代理：", runConfig.DisabledProxy)
+		"，程序是否禁用代理：", runConfig.DisabledProxy,
+		"上传图片间隔：", runConfig.UploadImageDelaySeconds, "秒",
+	)
 
 	for id, r := range ranges {
 		rs := strings.Split(strings.TrimSpace(r), configFileSeparate)
@@ -168,7 +172,8 @@ func RunTasks() {
 		// 加入到任务管理器中
 		tasks = append(tasks, accounts.NewTask(
 			id, runConfig.MaxSuccessAttempts, totalTaskAccount,
-			runConfig.Minute, runConfig.Seconds, runConfig.Retry, runConfig.Interval, runConfig.DisabledProxy, runConfig.UploadImageDelaySeconds,
+			runConfig.Minute, runConfig.Seconds, runConfig.Retry, runConfig.Interval,
+			runConfig.DisabledProxy, runConfig.UploadImageDelaySeconds, runConfig.UploadImageFailuresRetries,
 			loopAccountFilename, accounts.TaskRange{start, end},
 			account[0], account[1]))
 	}

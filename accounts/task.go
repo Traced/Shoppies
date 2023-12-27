@@ -13,12 +13,14 @@ import (
 	"github.com/gospider007/requests"
 )
 
-func NewTask(id, maxSuccessAttempts, taskAccountNum, minute, seconds, retry, interval int, disabledProxy bool, uploadImageDelaySeconds int, taskAccountFilepath string, ranges TaskRange, username, password string) *Task {
+func NewTask(id, maxSuccessAttempts, taskAccountNum, minute, seconds, retry, interval int, disabledProxy bool, uploadImageDelaySeconds, uploadImageFailuresRetries int, taskAccountFilepath string, ranges TaskRange, username, password string) *Task {
 	account := NewAccount(username, password, "")
 	// -1 使用默认传图间隔
 	if uploadImageDelaySeconds > -1 {
 		account.UploadImageDelaySeconds = uploadImageDelaySeconds
 	}
+	// 传图失败重试次数
+	account.UploadImageFailuresRetries = uploadImageFailuresRetries
 	return &Task{
 		ID:                  id,
 		TaskAccountFilepath: taskAccountFilepath,
